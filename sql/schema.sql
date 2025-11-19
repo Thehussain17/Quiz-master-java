@@ -8,6 +8,8 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL, -- In production, hash this!
+    total_correct_answers INT DEFAULT 0,
+    total_questions_answered INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -75,4 +77,6 @@ INSERT INTO questions (category, difficulty, question_text, option_a, option_b, 
 
 INSERT INTO achievements (name, description, unlock_condition) VALUES
 ('First Blood', 'Complete your first quiz', 'PLAY_1'),
-('Perfect Score', 'Get 100% on a quiz', 'SCORE_100');
+('Perfect Score', 'Get 100% on a quiz', 'SCORE_100'),
+('Streaker', 'Answer 10 questions correctly in a row', 'STREAK_10'),
+('Completionist', 'Complete a quiz in every category', 'ALL_CATEGORIES');
