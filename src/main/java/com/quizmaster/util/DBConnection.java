@@ -5,22 +5,19 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
-    private static final String URL = "jdbc:mysql://localhost:3306/quiz_master";
-    private static final String USER = "root"; // Update with your DB username
-    private static final String PASSWORD = "Hussain17@sql"; // Update with your DB password
+    private static final String MYSQL_URL = "jdbc:mysql://localhost:3306/quiz_master";
+    private static final String MYSQL_USER = "root"; // Update with your DB username
+    private static final String MYSQL_PASSWORD = "Hussain17@sql"; // Update with your DB password
 
-    private static Connection connection = null;
+    private static final String H2_URL = "jdbc:h2:mem:quiz_master;DB_CLOSE_DELAY=-1;MODE=MYSQL";
+    private static final String H2_USER = "sa";
+    private static final String H2_PASSWORD = "";
 
-    // Singleton pattern for connection
     public static Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            try {
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            } catch (SQLException e) {
-                System.err.println("Connection Failed! Check output console");
-                throw e;
-            }
+        if (Boolean.getBoolean("test")) {
+            return DriverManager.getConnection(H2_URL, H2_USER, H2_PASSWORD);
+        } else {
+            return DriverManager.getConnection(MYSQL_URL, MYSQL_USER, MYSQL_PASSWORD);
         }
-        return connection;
     }
 }
