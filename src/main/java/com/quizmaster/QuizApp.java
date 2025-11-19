@@ -11,8 +11,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -23,20 +24,20 @@ public class QuizApp extends Application {
     private Stage primaryStage;
     private QuizDAO quizDAO;
     private UserDAO userDAO;
-    private User currentUser; // The logged-in user
-    
+    private User currentUser;
+
+    // Game State
     private List<Question> questionList;
     private int currentQuestionIndex = 0;
     private int score = 0;
-    
+    private String currentCategory;
+
     // UI Components
     private Label questionLabel;
     private Label timerLabel;
     private RadioButton rbA, rbB, rbC, rbD;
     private ToggleGroup optionsGroup;
     private ProgressBar progressBar;
-    
-    // Timer
     private Timeline timeline;
     private int timeSeconds = 15;
 
@@ -45,78 +46,146 @@ public class QuizApp extends Application {
         this.primaryStage = stage;
         this.quizDAO = new QuizDAO();
         this.userDAO = new UserDAO();
-
+        
         primaryStage.setTitle("Quiz Master: Enterprise Edition");
         showLoginScreen();
         primaryStage.show();
     }
 
-    // --- SCENE 1: LOGIN / REGISTER ---
+    // --- SCENE 1: LOGIN ---
     private void showLoginScreen() {
         VBox layout = new VBox(15);
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(40));
         layout.setStyle("-fx-background-color: #2c3e50;");
 
-        Label title = new Label("Quiz Master Login");
-        title.setStyle("-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;");
+        Label title = new Label("Quiz Master");
+        title.setStyle("-fx-font-size: 32px; -fx-text-fill: white; -fx-font-weight: bold;");
 
-        TextField userField = new TextField();
-        userField.setPromptText("Username");
+        TextField userField = new TextField(); userField.setPromptText("Username");
+        PasswordField passField = new PasswordField(); passField.setPromptText("Password");
         
-        PasswordField passField = new PasswordField();
-        passField.setPromptText("Password");
-        
-        TextField emailField = new TextField(); // Only for registration
-        emailField.setPromptText("Email (Register only)");
-
         Button loginBtn = new Button("Login");
-        loginBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white;");
+        loginBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 14px;");
         loginBtn.setPrefWidth(200);
         
-        Button registerBtn = new Button("Register New User");
-        registerBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white;");
+        Button registerBtn = new Button("Register");
+        registerBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 14px;");
         registerBtn.setPrefWidth(200);
 
-        // Login Logic
         loginBtn.setOnAction(e -> {
             User user = userDAO.login(userField.getText(), passField.getText());
             if (user != null) {
                 currentUser = user;
-                startQuiz();
+                showDashboard(); // Go to Dashboard, not straight to quiz
             } else {
                 showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid credentials.");
             }
         });
 
-        // Register Logic
         registerBtn.setOnAction(e -> {
-            if(userField.getText().isEmpty() || passField.getText().isEmpty()) {
-                showAlert(Alert.AlertType.WARNING, "Input Error", "Username and Password required.");
-                return;
-            }
-            User user = userDAO.register(userField.getText(), emailField.getText(), passField.getText());
+            User user = userDAO.register(userField.getText(), "temp@email.com", passField.getText());
             if (user != null) {
                 currentUser = user;
-                showAlert(Alert.AlertType.INFORMATION, "Success", "Account created! Starting quiz...");
-                startQuiz();
+                showDashboard();
             } else {
-                showAlert(Alert.AlertType.ERROR, "Error", "Username likely taken.");
+                showAlert(Alert.AlertType.ERROR, "Error", "Username taken.");
             }
         });
 
-        layout.getChildren().addAll(title, userField, passField, emailField, loginBtn, registerBtn);
-        primaryStage.setScene(new Scene(layout, 400, 500));
+        layout.getChildren().addAll(title, userField, passField, loginBtn, registerBtn);
+        primaryStage.setScene(new Scene(layout, 400, 550));
     }
 
-    // --- SCENE 2: QUIZ GAME ---
-    private void startQuiz() {
-        questionList = quizDAO.getRandomQuestions(5); 
+    // --- SCENE 2: DASHBOARD (NEW) ---
+    private void showDashboard() {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #ecf0f1;");
+        
+        // Header
+        HBox header = new HBox(20);
+        header.setPadding(new Insets(20));
+        header.setStyle("-fx-background-color: #2c3e50;");
+        header.setAlignment(Pos.CENTER_LEFT);
+        
+        Label welcome = new Label("Welcome, " + currentUser.getUsername());
+        welcome.setStyle("-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        Button logoutBtn = new Button("Logout");
+        logoutBtn.setOnAction(e -> {
+            currentUser = null;
+            showLoginScreen();
+        });
+        
+        header.getChildren().addAll(welcome, spacer, logoutBtn);
+        root.setTop(header);
+
+        // Grid of Categories
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        
+        FlowPane grid = new FlowPane();
+        grid.setPadding(new Insets(30));
+        grid.setHgap(20);
+        grid.setVgap(20);
+        grid.setAlignment(Pos.CENTER);
+
+        // DYNAMIC GENERATION: Fetch categories from DB and create buttons
+        List<String> categories = quizDAO.getCategories();
+        
+        if(categories.isEmpty()) {
+             grid.getChildren().add(new Label("No categories found in DB! Run massive_seed.sql"));
+        }
+
+        for (String cat : categories) {
+            Button catBtn = createCategoryCard(cat);
+            grid.getChildren().add(catBtn);
+        }
+
+        scrollPane.setContent(grid);
+        root.setCenter(scrollPane);
+        
+        primaryStage.setScene(new Scene(root, 800, 600));
+    }
+
+    private Button createCategoryCard(String category) {
+        Button btn = new Button(category);
+        btn.setPrefSize(150, 150);
+        btn.setStyle(
+            "-fx-background-color: white; " +
+            "-fx-font-size: 18px; " +
+            "-fx-font-weight: bold; " +
+            "-fx-text-fill: #2c3e50; " +
+            "-fx-background-radius: 10;"
+        );
+        
+        // Hover effects
+        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-background-radius: 10;"));
+        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: white; -fx-text-fill: #2c3e50; -fx-font-size: 18px; -fx-font-weight: bold; -fx-background-radius: 10;"));
+        
+        // Shadow effect
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.GRAY);
+        btn.setEffect(shadow);
+
+        btn.setOnAction(e -> startQuiz(category));
+        return btn;
+    }
+
+    // --- SCENE 3: QUIZ GAME ---
+    private void startQuiz(String category) {
+        this.currentCategory = category;
+        // Fetch 5 random questions for the SELECTED category
+        questionList = quizDAO.getQuestionsByCategory(category, 5); 
         currentQuestionIndex = 0;
         score = 0;
 
         if (questionList.isEmpty()) {
-            showAlert(Alert.AlertType.ERROR, "Database Error", "No questions found.");
+            showAlert(Alert.AlertType.ERROR, "Error", "No questions in this category!");
             return;
         }
         initQuizUI();
@@ -127,38 +196,43 @@ public class QuizApp extends Application {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(20));
 
+        // Top Bar
         VBox topBox = new VBox(10);
-        Label welcome = new Label("Player: " + currentUser.getUsername());
-        welcome.setStyle("-fx-font-weight: bold;");
+        Label catLabel = new Label("Category: " + currentCategory);
+        catLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
         
         timerLabel = new Label("Time: 15");
-        timerLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: #e74c3c;");
+        timerLabel.setStyle("-fx-font-size: 18px; -fx-text-fill: #e74c3c; -fx-font-weight: bold;");
         
         progressBar = new ProgressBar(0);
-        progressBar.setPrefWidth(600);
+        progressBar.setPrefWidth(Double.MAX_VALUE); // Fill width
         
-        topBox.getChildren().addAll(welcome, timerLabel, progressBar);
+        topBox.getChildren().addAll(catLabel, timerLabel, progressBar);
         topBox.setAlignment(Pos.CENTER);
         root.setTop(topBox);
 
-        VBox centerBox = new VBox(15);
+        // Question Area
+        VBox centerBox = new VBox(20);
         centerBox.setAlignment(Pos.CENTER_LEFT);
-        centerBox.setPadding(new Insets(20));
+        centerBox.setPadding(new Insets(20, 50, 20, 50));
 
         questionLabel = new Label();
         questionLabel.setWrapText(true);
-        questionLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        questionLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
         optionsGroup = new ToggleGroup();
-        rbA = new RadioButton(); rbA.setToggleGroup(optionsGroup);
-        rbB = new RadioButton(); rbB.setToggleGroup(optionsGroup);
-        rbC = new RadioButton(); rbC.setToggleGroup(optionsGroup);
-        rbD = new RadioButton(); rbD.setToggleGroup(optionsGroup);
+        rbA = styleOption(); rbA.setToggleGroup(optionsGroup);
+        rbB = styleOption(); rbB.setToggleGroup(optionsGroup);
+        rbC = styleOption(); rbC.setToggleGroup(optionsGroup);
+        rbD = styleOption(); rbD.setToggleGroup(optionsGroup);
 
         centerBox.getChildren().addAll(questionLabel, rbA, rbB, rbC, rbD);
         root.setCenter(centerBox);
 
-        Button nextButton = new Button("Next Question");
+        // Bottom Bar
+        Button nextButton = new Button("Confirm Answer");
+        nextButton.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-size: 16px;");
+        nextButton.setPrefWidth(200);
         nextButton.setOnAction(e -> handleNextButton());
         
         VBox bottomBox = new VBox(nextButton);
@@ -166,7 +240,13 @@ public class QuizApp extends Application {
         bottomBox.setPadding(new Insets(20));
         root.setBottom(bottomBox);
 
-        primaryStage.setScene(new Scene(root, 600, 500));
+        primaryStage.setScene(new Scene(root, 800, 600));
+    }
+
+    private RadioButton styleOption() {
+        RadioButton rb = new RadioButton();
+        rb.setStyle("-fx-font-size: 16px; -fx-padding: 10;");
+        return rb;
     }
 
     private void loadQuestion() {
@@ -176,11 +256,15 @@ public class QuizApp extends Application {
         }
 
         Question q = questionList.get(currentQuestionIndex);
-        questionLabel.setText("Q" + (currentQuestionIndex + 1) + ": " + q.getQuestionText());
-        rbA.setText("A) " + q.getOptionA());
-        rbB.setText("B) " + q.getOptionB());
-        rbC.setText("C) " + q.getOptionC());
-        rbD.setText("D) " + q.getOptionD());
+        
+        // Display Difficulty stars
+        String stars = "★".repeat(q.getDifficulty()) + "☆".repeat(5 - q.getDifficulty());
+        questionLabel.setText(stars + "\n" + q.getQuestionText());
+        
+        rbA.setText(q.getOptionA());
+        rbB.setText(q.getOptionB());
+        rbC.setText(q.getOptionC());
+        rbD.setText(q.getOptionD());
 
         optionsGroup.selectToggle(null);
         resetTimer();
@@ -210,8 +294,16 @@ public class QuizApp extends Application {
         Question q = questionList.get(currentQuestionIndex);
         
         if (selected != null) {
-            String selectedOptionChar = selected.getText().substring(0, 1); 
-            if (selectedOptionChar.equals(q.getCorrectOption())) {
+            // Check answer based on the RadioButton text? 
+            // No, our DB stores "A", "B" but UI shows full text.
+            // We need to map UI selection back to A/B/C/D.
+            String selectedAnswer = "";
+            if (selected == rbA) selectedAnswer = "A";
+            else if (selected == rbB) selectedAnswer = "B";
+            else if (selected == rbC) selectedAnswer = "C";
+            else if (selected == rbD) selectedAnswer = "D";
+
+            if (selectedAnswer.equals(q.getCorrectOption())) {
                 score++;
             }
         }
@@ -219,25 +311,26 @@ public class QuizApp extends Application {
         loadQuestion();
     }
 
-    // --- SCENE 3: RESULTS ---
+    // --- SCENE 4: RESULTS ---
     private void endQuiz() {
-        // Save score linked to the specific user ID
-        quizDAO.saveScore(currentUser.getId(), "General", score, questionList.size());
+        quizDAO.saveScore(currentUser.getId(), currentCategory, score, questionList.size());
 
         VBox layout = new VBox(20);
         layout.setAlignment(Pos.CENTER);
-        
-        Label scoreLabel = new Label("Score: " + score + " / " + questionList.size());
-        scoreLabel.setStyle("-fx-font-size: 24px;");
-        
-        Button logoutBtn = new Button("Logout");
-        logoutBtn.setOnAction(e -> {
-            currentUser = null;
-            showLoginScreen();
-        });
+        layout.setStyle("-fx-background-color: #ecf0f1;");
 
-        layout.getChildren().addAll(new Label("Quiz Finished!"), scoreLabel, logoutBtn);
-        primaryStage.setScene(new Scene(layout, 600, 400));
+        Label congrats = new Label("Quiz Completed!");
+        congrats.setStyle("-fx-font-size: 32px; -fx-font-weight: bold;");
+
+        Label scoreLabel = new Label("Score: " + score + " / " + questionList.size());
+        scoreLabel.setStyle("-fx-font-size: 24px; -fx-text-fill: #27ae60;");
+
+        Button homeBtn = new Button("Back to Dashboard");
+        homeBtn.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-font-size: 16px;");
+        homeBtn.setOnAction(e -> showDashboard());
+
+        layout.getChildren().addAll(congrats, scoreLabel, homeBtn);
+        primaryStage.setScene(new Scene(layout, 800, 600));
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
