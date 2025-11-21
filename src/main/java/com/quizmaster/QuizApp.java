@@ -107,7 +107,7 @@ public class QuizApp extends Application {
         });
 
         registerBtn.setOnAction(e -> {
-            User user = userDAO.register(userField.getText(), "temp@email.com", passField.getText());
+            User user = userDAO.register(userField.getText(), emailField.getText(), passField.getText());
             if (user != null) {
                 currentUser = user;
                 showDashboard();
