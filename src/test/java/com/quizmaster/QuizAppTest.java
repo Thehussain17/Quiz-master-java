@@ -34,6 +34,10 @@ public class QuizAppTest {
 
             // Add a test user
             statement.execute("INSERT INTO users (username, email, password) VALUES ('testuser', 'test@test.com', 'password')");
+<<<<<<< HEAD
+=======
+            statement.execute("INSERT INTO users (username, email, password) VALUES ('testuser2', 'test2@test.com', 'password2')");
+>>>>>>> feature/all-categories-quiz
         }
     }
 
@@ -66,4 +70,42 @@ public class QuizAppTest {
         // Take a screenshot
         robot.capture(Paths.get(getProperty("java.io.tmpdir"), "leaderboard.png"));
     }
+<<<<<<< HEAD
+=======
+
+    @Test
+    public void testAllCategoriesQuiz(FxRobot robot) {
+        // Login
+        robot.clickOn(".text-field").write("testuser2");
+        robot.clickOn(".password-field").write("password2");
+        robot.clickOn("Login");
+
+        // Navigate to All Categories
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        robot.clickOn("All Categories");
+
+        // Verify that we are on the quiz screen
+        verifyThat(".label", hasText("Category: All Categories"));
+    }
+
+    @Test
+    public void testDashboard(FxRobot robot) {
+        // Login
+        robot.clickOn(".text-field").write("testuser");
+        robot.clickOn(".password-field").write("password");
+        robot.clickOn("Login");
+
+        // Take a screenshot
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        robot.capture(Paths.get(getProperty("java.io.tmpdir"), "dashboard.png"));
+    }
+>>>>>>> feature/all-categories-quiz
 }

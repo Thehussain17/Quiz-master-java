@@ -47,8 +47,20 @@ public class Confetti {
     }
 
     private void moveConfetti() {
+<<<<<<< HEAD
         for (Rectangle rect : confetti) {
             rect.setY(rect.getY() + 5);
         }
+=======
+        List<Rectangle> toRemove = new ArrayList<>();
+        for (Rectangle rect : confetti) {
+            rect.setY(rect.getY() + 5);
+            if (rect.getY() > pane.getHeight()) {
+                toRemove.add(rect);
+            }
+        }
+        confetti.removeAll(toRemove);
+        pane.getChildren().removeAll(toRemove);
+>>>>>>> feature/all-categories-quiz
     }
 }

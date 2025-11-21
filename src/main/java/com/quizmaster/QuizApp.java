@@ -84,7 +84,7 @@ public class QuizApp extends Application {
         title.setStyle("-fx-font-size: 32px; -fx-text-fill: white; -fx-font-weight: bold;");
 
         TextField userField = new TextField(); userField.setPromptText("Username");
-        TextField emailField = new TextField(); emailField.setPromptText("Email");
+        userField.getStyleClass().add("text-field");
         PasswordField passField = new PasswordField(); passField.setPromptText("Password");
         passField.getStyleClass().add("password-field");
         
@@ -170,6 +170,10 @@ public class QuizApp extends Application {
              grid.getChildren().add(new Label("No categories found in DB! Run massive_seed.sql"));
         }
 
+        // Add the "All Categories" button first
+        Button allCategoriesBtn = createCategoryCard("All Categories");
+        grid.getChildren().add(allCategoriesBtn);
+
         for (String cat : categories) {
             Button catBtn = createCategoryCard(cat);
             grid.getChildren().add(catBtn);
@@ -208,8 +212,11 @@ public class QuizApp extends Application {
     // --- SCENE 3: QUIZ GAME ---
     private void startQuiz(String category) {
         this.currentCategory = category;
-        // Fetch 5 random questions for the SELECTED category
-        questionList = quizDAO.getQuestionsByCategory(category, 5); 
+        if (category.equals("All Categories")) {
+            questionList = quizDAO.getRandomQuestions(10);
+        } else {
+            questionList = quizDAO.getQuestionsByCategory(category, 5);
+        }
         currentQuestionIndex = 0;
         score = 0;
 
@@ -348,9 +355,6 @@ public class QuizApp extends Application {
     // --- SCENE 4: RESULTS ---
     private void endQuiz() {
         quizDAO.saveScore(currentUser.getId(), currentCategory, score, questionList.size());
-
-        // Check for achievements
-        achievementService.checkAchievements(currentUser, consecutiveCorrectAnswers);
 
         // Example: if a new achievement is unlocked, play sound and show confetti
         List<Integer> unlockedBefore = achievementDAO.getUnlockedAchievementIds(currentUser.getId());

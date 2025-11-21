@@ -112,4 +112,36 @@ public class QuizDAO {
         }
         return playedCategories;
     }
+<<<<<<< HEAD
+=======
+
+    public List<Question> getRandomQuestions(int limit) {
+        List<Question> questions = new ArrayList<>();
+        String query = "SELECT * FROM questions ORDER BY RAND() LIMIT ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setInt(1, limit);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                questions.add(new Question(
+                    rs.getInt("id"),
+                    rs.getString("question_text"),
+                    rs.getString("option_a"),
+                    rs.getString("option_b"),
+                    rs.getString("option_c"),
+                    rs.getString("option_d"),
+                    rs.getString("correct_option"),
+                    rs.getString("category"),
+                    rs.getInt("difficulty")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return questions;
+    }
+>>>>>>> feature/all-categories-quiz
 }

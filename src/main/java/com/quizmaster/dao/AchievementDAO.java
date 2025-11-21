@@ -61,4 +61,28 @@ public class AchievementDAO {
             // Ignore if the achievement is already unlocked (duplicate key)
         }
     }
+<<<<<<< HEAD
+=======
+
+    public Achievement getAchievementByUnlockCondition(String unlockCondition) {
+        String sql = "SELECT * FROM achievements WHERE unlock_condition = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, unlockCondition);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Achievement(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("description"),
+                            rs.getString("unlock_condition")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+>>>>>>> feature/all-categories-quiz
 }
