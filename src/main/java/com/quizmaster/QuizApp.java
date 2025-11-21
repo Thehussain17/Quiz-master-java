@@ -47,7 +47,7 @@ public class QuizApp extends Application {
         this.quizDAO = new QuizDAO();
         this.userDAO = new UserDAO();
         
-        primaryStage.setTitle("Quiz Master: Enterprise Edition");
+        primaryStage.setTitle("Quiz Master: Test your knowledge!");
         showLoginScreen();
         primaryStage.show();
     }
@@ -63,6 +63,7 @@ public class QuizApp extends Application {
         title.setStyle("-fx-font-size: 32px; -fx-text-fill: white; -fx-font-weight: bold;");
 
         TextField userField = new TextField(); userField.setPromptText("Username");
+        TextField emailField = new TextField(); emailField.setPromptText("Email");
         PasswordField passField = new PasswordField(); passField.setPromptText("Password");
         
         Button loginBtn = new Button("Login");
@@ -74,7 +75,7 @@ public class QuizApp extends Application {
         registerBtn.setPrefWidth(200);
 
         loginBtn.setOnAction(e -> {
-            User user = userDAO.login(userField.getText(), passField.getText());
+            User user = userDAO.login(userField.getText(),emailField.getText(), passField.getText());
             if (user != null) {
                 currentUser = user;
                 showDashboard(); // Go to Dashboard, not straight to quiz

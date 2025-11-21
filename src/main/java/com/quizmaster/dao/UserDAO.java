@@ -7,7 +7,7 @@ import java.sql.*;
 
 public class UserDAO {
 
-    public User login(String username, String password) {
+    public User login(String username,String email, String password) {
         String query = "SELECT id, username, email FROM users WHERE username = ? AND password = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
