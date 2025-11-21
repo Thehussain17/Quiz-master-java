@@ -3,7 +3,11 @@ package com.quizmaster.dao;
 import com.quizmaster.model.Question;
 import com.quizmaster.util.DBConnection;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,8 +72,44 @@ public class QuizDAO {
             pstmt.setInt(3, score);
             pstmt.setInt(4, total);
             pstmt.executeUpdate();
+
+            // NEW: Update the user's global stats for the leaderboard
+            updateUserStats(userId, score, total);
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    private void updateUserStats(int userId, int correctAnswers, int totalQuestions) {
+        String query = "UPDATE users SET total_correct_answers = total_correct_answers + ?, " +
+                       "total_questions_answered = total_questions_answered + ? " +
+                       "WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, correctAnswers);
+            pstmt.setInt(2, totalQuestions);
+            pstmt.setInt(3, userId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> getPlayedCategories(int userId) {
+        List<String> playedCategories = new ArrayList<>();
+        String query = "SELECT DISTINCT category FROM scores WHERE user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    playedCategories.add(rs.getString("category"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return playedCategories;
     }
 }

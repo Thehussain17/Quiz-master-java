@@ -1,16 +1,27 @@
 package com.quizmaster;
 
+import com.quizmaster.dao.AchievementDAO;
+import com.quizmaster.dao.LeaderboardDAO;
 import com.quizmaster.dao.QuizDAO;
 import com.quizmaster.dao.UserDAO;
+import com.quizmaster.model.Achievement;
+import com.quizmaster.model.Leaderboard;
 import com.quizmaster.model.Question;
+import com.quizmaster.service.AchievementService;
 import com.quizmaster.model.User;
+import com.quizmaster.util.Confetti;
+import com.quizmaster.util.Sound;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -24,12 +35,19 @@ public class QuizApp extends Application {
     private Stage primaryStage;
     private QuizDAO quizDAO;
     private UserDAO userDAO;
+    private LeaderboardDAO leaderboardDAO;
+    private AchievementDAO achievementDAO;
+    private AchievementService achievementService;
     private User currentUser;
+
+    // Special effects
+    private Confetti confetti;
 
     // Game State
     private List<Question> questionList;
     private int currentQuestionIndex = 0;
     private int score = 0;
+    private int consecutiveCorrectAnswers = 0;
     private String currentCategory;
 
     // UI Components
@@ -46,6 +64,9 @@ public class QuizApp extends Application {
         this.primaryStage = stage;
         this.quizDAO = new QuizDAO();
         this.userDAO = new UserDAO();
+        this.leaderboardDAO = new LeaderboardDAO();
+        this.achievementDAO = new AchievementDAO();
+        this.achievementService = new AchievementService();
         
         primaryStage.setTitle("Quiz Master: Test your knowledge!");
         showLoginScreen();
@@ -65,6 +86,7 @@ public class QuizApp extends Application {
         TextField userField = new TextField(); userField.setPromptText("Username");
         TextField emailField = new TextField(); emailField.setPromptText("Email");
         PasswordField passField = new PasswordField(); passField.setPromptText("Password");
+        passField.getStyleClass().add("password-field");
         
         Button loginBtn = new Button("Login");
         loginBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 14px;");
@@ -114,6 +136,12 @@ public class QuizApp extends Application {
         
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button leaderboardBtn = new Button("Leaderboard");
+        leaderboardBtn.setOnAction(e -> showLeaderboard());
+
+        Button achievementsBtn = new Button("Achievements");
+        achievementsBtn.setOnAction(e -> showAchievements());
         
         Button logoutBtn = new Button("Logout");
         logoutBtn.setOnAction(e -> {
@@ -121,7 +149,7 @@ public class QuizApp extends Application {
             showLoginScreen();
         });
         
-        header.getChildren().addAll(welcome, spacer, logoutBtn);
+        header.getChildren().addAll(welcome, spacer, leaderboardBtn, achievementsBtn, logoutBtn);
         root.setTop(header);
 
         // Grid of Categories
@@ -306,7 +334,12 @@ public class QuizApp extends Application {
 
             if (selectedAnswer.equals(q.getCorrectOption())) {
                 score++;
+                consecutiveCorrectAnswers++;
+            } else {
+                consecutiveCorrectAnswers = 0;
             }
+        } else {
+            consecutiveCorrectAnswers = 0;
         }
         currentQuestionIndex++;
         loadQuestion();
@@ -315,6 +348,19 @@ public class QuizApp extends Application {
     // --- SCENE 4: RESULTS ---
     private void endQuiz() {
         quizDAO.saveScore(currentUser.getId(), currentCategory, score, questionList.size());
+
+        // Check for achievements
+        achievementService.checkAchievements(currentUser, consecutiveCorrectAnswers);
+
+        // Example: if a new achievement is unlocked, play sound and show confetti
+        List<Integer> unlockedBefore = achievementDAO.getUnlockedAchievementIds(currentUser.getId());
+        achievementService.checkAchievements(currentUser, consecutiveCorrectAnswers);
+        List<Integer> unlockedAfter = achievementDAO.getUnlockedAchievementIds(currentUser.getId());
+
+        if (unlockedAfter.size() > unlockedBefore.size()) {
+            playAchievementSound();
+            triggerConfetti();
+        }
 
         VBox layout = new VBox(20);
         layout.setAlignment(Pos.CENTER);
@@ -339,6 +385,127 @@ public class QuizApp extends Application {
         alert.setTitle(title);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    // --- SCENE 5: LEADERBOARD ---
+    private void showLeaderboard() {
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #ecf0f1;");
+
+        // Header
+        Label title = new Label("Leaderboard");
+        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+
+        Button backBtn = new Button("Back to Dashboard");
+        backBtn.setOnAction(e -> showDashboard());
+
+        HBox topBox = new HBox(20, title, backBtn);
+        topBox.setAlignment(Pos.CENTER_LEFT);
+        root.setTop(topBox);
+
+        // Table
+        TableView<Leaderboard> table = new TableView<>();
+        TableColumn<Leaderboard, Integer> rankCol = new TableColumn<>("Rank");
+        rankCol.setCellValueFactory(new PropertyValueFactory<>("rank"));
+
+        TableColumn<Leaderboard, String> userCol = new TableColumn<>("Username");
+        userCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+
+        TableColumn<Leaderboard, Double> accuracyCol = new TableColumn<>("Accuracy %");
+        accuracyCol.setCellValueFactory(new PropertyValueFactory<>("accuracy"));
+
+        table.getColumns().addAll(rankCol, userCol, accuracyCol);
+
+        // Category Filter
+        ComboBox<String> categoryFilter = new ComboBox<>();
+        categoryFilter.getItems().add("Global");
+        categoryFilter.getItems().addAll(quizDAO.getCategories());
+        categoryFilter.setValue("Global");
+
+        categoryFilter.setOnAction(e -> {
+            String selected = categoryFilter.getValue();
+            if (selected.equals("Global")) {
+                ObservableList<Leaderboard> data = FXCollections.observableArrayList(leaderboardDAO.getGlobalLeaderboard());
+                table.setItems(data);
+            } else {
+                ObservableList<Leaderboard> data = FXCollections.observableArrayList(leaderboardDAO.getCategoryLeaderboard(selected));
+                table.setItems(data);
+            }
+        });
+
+        // Initial load
+        categoryFilter.fireEvent(new ActionEvent());
+
+        VBox centerBox = new VBox(20, categoryFilter, table);
+        root.setCenter(centerBox);
+
+        primaryStage.setScene(new Scene(root, 800, 600));
+    }
+
+    // --- SCENE 6: ACHIEVEMENTS ---
+    private void showAchievements() {
+        BorderPane root = new BorderPane();
+        root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #ecf0f1;");
+
+        // Header
+        Label title = new Label("Achievements");
+        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+
+        Button backBtn = new Button("Back to Dashboard");
+        backBtn.setOnAction(e -> showDashboard());
+
+        HBox topBox = new HBox(20, title, backBtn);
+        topBox.setAlignment(Pos.CENTER_LEFT);
+        root.setTop(topBox);
+
+        // Grid of Achievements
+        FlowPane grid = new FlowPane();
+        grid.setPadding(new Insets(30));
+        grid.setHgap(20);
+        grid.setVgap(20);
+
+        List<Achievement> allAchievements = achievementDAO.getAllAchievements();
+        List<Integer> unlockedIds = achievementDAO.getUnlockedAchievementIds(currentUser.getId());
+
+        for (Achievement ach : allAchievements) {
+            VBox card = new VBox(10);
+            card.setPrefSize(150, 150);
+            card.setAlignment(Pos.CENTER);
+            card.setPadding(new Insets(10));
+
+            Label name = new Label(ach.getName());
+            name.setStyle("-fx-font-weight: bold;");
+            Label desc = new Label(ach.getDescription());
+            desc.setWrapText(true);
+
+            if (unlockedIds.contains(ach.getId())) {
+                card.setStyle("-fx-background-color: #27ae60; -fx-background-radius: 10;"); // Unlocked
+            } else {
+                card.setStyle("-fx-background-color: #bdc3c7; -fx-background-radius: 10;"); // Locked
+            }
+            card.getChildren().addAll(name, desc);
+            grid.getChildren().add(card);
+        }
+
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        root.setCenter(scrollPane);
+
+        primaryStage.setScene(new Scene(root, 800, 600));
+    }
+
+    // --- SPECIAL EFFECTS ---
+    private void playAchievementSound() {
+        Sound.play();
+    }
+
+    private void triggerConfetti() {
+        // In a real app, you'd use a library or custom Canvas animation.
+        Pane root = (Pane) primaryStage.getScene().getRoot();
+        confetti = new Confetti(root);
+        confetti.start();
     }
 
     public static void main(String[] args) {

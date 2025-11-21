@@ -1,6 +1,13 @@
-C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\QuizApp.java
 C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\dao\QuizDAO.java
 C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\dao\UserDAO.java
-C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\model\User.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\dao\LeaderboardDAO.java
 C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\model\Question.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\model\Achievement.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\QuizApp.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\util\Sound.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\model\User.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\util\Confetti.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\model\Leaderboard.java
 C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\util\DBConnection.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\dao\AchievementDAO.java
+C:\Users\HP\Documents\Java\Projects\Quiz-master-java\src\main\java\com\quizmaster\service\AchievementService.java
